@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp"
+    android:nestedScrollingEnabled="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:divider="?android:attr/dividerHorizontal"
+        android:dividerPadding="8dp"
+        android:showDividers="middle">
+
+        <!-- Day of the Week -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Day of the Week"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="8dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_sunday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sunday" />
+
+            <CheckBox
+                android:id="@+id/check_monday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Monday" />
+
+            <CheckBox
+                android:id="@+id/check_tuesday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tuesday" />
+
+            <CheckBox
+                android:id="@+id/check_wednesday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Wednesday" />
+
+            <CheckBox
+                android:id="@+id/check_thursday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Thursday" />
+
+            <CheckBox
+                android:id="@+id/check_friday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Friday" />
+
+            <CheckBox
+                android:id="@+id/check_saturday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saturday" />
+        </GridLayout>
+
+        <!-- Skill Level -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Skill Level"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="16dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_beginner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:text="Beginner"
+                android:layout_gravity="fill_horizontal"/>
+
+            <CheckBox
+                android:id="@+id/check_intermediate"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:text="Intermediate"
+                android:layout_gravity="fill_horizontal"/>
+
+            <CheckBox
+                android:id="@+id/check_advanced"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:text="Advanced"
+                android:layout_gravity="fill_horizontal"/>
+
+            <CheckBox
+                android:id="@+id/check_all_levels"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:text="All Levels"
+                android:layout_gravity="fill_horizontal"/>
+        </GridLayout>
+
+
+        <!-- Duration -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Duration"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="16dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_short"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Short (&lt; 30 mins)" />
+
+            <CheckBox
+                android:id="@+id/check_medium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Medium (30–60 mins)" />
+
+            <CheckBox
+                android:id="@+id/check_long"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Long (&gt; 60 mins)" />
+        </GridLayout>
+
+        <!-- Focus Area -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Focus Area"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="16dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_flexibility"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flexibility" />
+
+            <CheckBox
+                android:id="@+id/check_strength"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Strength" />
+
+            <CheckBox
+                android:id="@+id/check_balance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Balance" />
+
+            <CheckBox
+                android:id="@+id/check_core"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Core" />
+
+            <CheckBox
+                android:id="@+id/check_relaxation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Relaxation" />
+        </GridLayout>
+
+        <!-- Body Area -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Body Area"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="16dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_full_body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Full Body" />
+
+            <CheckBox
+                android:id="@+id/check_upper_body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Upper Body" />
+
+            <CheckBox
+                android:id="@+id/check_lower_body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lower Body" />
+
+            <CheckBox
+                android:id="@+id/check_back_spine"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Back" />
+
+            <CheckBox
+                android:id="@+id/check_core_abs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Abs" />
+        </GridLayout>
+
+        <!-- Capacity -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Capacity"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="16dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="1"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_small_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Small Group(&lt; 10 person)" />
+
+            <CheckBox
+                android:id="@+id/check_medium_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Medium Group(10–25 person)" />
+
+            <CheckBox
+                android:id="@+id/check_large_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Large Group(&gt; 25 person)" />
+        </GridLayout>
+
+        <!-- Price -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Price"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:paddingTop="16dp" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:orientation="horizontal">
+
+            <CheckBox
+                android:id="@+id/check_low_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Affordable (&lt; 20£)" />
+
+            <CheckBox
+                android:id="@+id/check_medium_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Moderate (20-50£)" />
+
+            <CheckBox
+                android:id="@+id/check_high_price"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Premium (&gt; 50£)" />
+        </GridLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/apply_button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Apply"
+                android:textColor="@android:color/white"
+                android:backgroundTint="@color/purple"
+                android:layout_marginEnd="8dp"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

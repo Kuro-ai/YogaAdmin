@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">YogaAdmin</string>
+    <string name="drawer_open">Open navigation drawer</string>
+    <string name="drawer_close">Close navigation drawer</string>
+    <string name="day_of_week_prompt">Day of the Week</string>
+    <string name="skill_level_prompt">Skill Level</string>
+    <string name="duration_prompt">Duration</string>
+    <string name="focus_area_prompt">Focus Area</string>
+    <string name="body_area_prompt">Body Area</string>
+    <string name="goals_prompt">Goals</string>
+    <string name="capacity_prompt">Capacity</string>
+    <string name="price_prompt">Price</string>
+</resources>
