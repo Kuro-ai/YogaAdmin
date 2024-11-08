@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -39,6 +40,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 
 
 class AddClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
@@ -127,6 +130,17 @@ class AddClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSel
         }
     }
 
+    private fun encodeImageToBase64(uri: Uri): String? {
+        val inputStream = contentResolver.openInputStream(uri)
+        val bitmap = BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        bitmap?.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
+        val byteArray = byteArrayOutputStream.toByteArray()
+        return Base64.encodeToString(byteArray, Base64.DEFAULT)
+    }
+
     private fun showImageSourceDialog() {
         val options = arrayOf("Take Photo", "Choose from Gallery")
         val builder = AlertDialog.Builder(this)
@@ -187,10 +201,10 @@ class AddClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSel
 
 
     private fun openImage(uri: Uri) {
-            val inputStream = contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            selectedImageView.setImageBitmap(bitmap)
-            inputStream?.close()
+        val inputStream = contentResolver.openInputStream(uri)
+        val bitmap = BitmapFactory.decodeStream(inputStream)
+        selectedImageView.setImageBitmap(bitmap)
+        inputStream?.close()
     }
 
     private fun showTimePickerDialog() {
@@ -277,6 +291,8 @@ class AddClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSel
             return
         }
 
+        val encodedImage = encodeImageToBase64(selectedImageUri!!)
+
         val yogaClass = YogaClass(
             dayOfWeek = findViewById<Spinner>(R.id.dayOfWeekSpinner).selectedItem.toString(),
             timeOfCourse = timeOfCourseInput.text.toString(),
@@ -288,7 +304,7 @@ class AddClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSel
             focusArea = findViewById<Spinner>(R.id.focusAreaSpinner).selectedItem.toString(),
             bodyArea = findViewById<Spinner>(R.id.bodyAreaSpinner).selectedItem.toString(),
             description = findViewById<EditText>(R.id.descriptionInput).text.toString(),
-            imageUri = selectedImageUri.toString()
+            imageUri = encodedImage
         )
 
         val result = yogaDao.insertClass(yogaClass)
@@ -323,6 +339,7 @@ class AddClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSel
             Toast.makeText(this, "Failed to add class to SQLite", Toast.LENGTH_SHORT).show()
         }
     }
+
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {

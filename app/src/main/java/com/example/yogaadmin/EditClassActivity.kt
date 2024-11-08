@@ -6,12 +6,14 @@ import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Base64
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
@@ -28,6 +30,7 @@ import com.google.android.material.navigation.NavigationView
 import com.example.yogaadmin.databinding.ActivityEditClassBinding
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -143,6 +146,18 @@ class EditClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSe
             }
         }
     }
+
+    private fun encodeImageToBase64(uri: Uri): String? {
+        val inputStream = contentResolver.openInputStream(uri)
+        val bitmap = BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        bitmap?.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
+        val byteArray = byteArrayOutputStream.toByteArray()
+        return Base64.encodeToString(byteArray, Base64.DEFAULT)
+    }
+
     private fun showImageSourceDialog() {
         val options = arrayOf("Take Photo", "Choose from Gallery")
         val builder = AlertDialog.Builder(this)
@@ -209,39 +224,60 @@ class EditClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSe
     }
 
     private fun loadClassDetails() {
-        val yogaClass = yogaDao.getClassById(classId)
-        yogaClass?.let {
-            originalDayOfWeek = it.dayOfWeek
+        val yogaClassFromSql = yogaDao.getClassById(classId)
 
-            binding.dayOfWeekSpinner.setSelection(getSpinnerPosition(it.dayOfWeek, binding.dayOfWeekSpinner))
-            binding.timeOfCourseInput.text = it.timeOfCourse
-            binding.capacityInput.setText(it.capacity.toString())
-            binding.durationInput.setText(it.duration.toString())
-            binding.pricePerClassInput.setText(it.pricePerClass.toString())
-            binding.skillLevelSpinner.setSelection(getSpinnerPosition(it.skillLevel, binding.skillLevelSpinner))
-            binding.typeOfClassSpinner.setSelection(getSpinnerPosition(it.typeOfClass, binding.typeOfClassSpinner))
-            binding.focusAreaSpinner.setSelection(getSpinnerPosition(it.focusArea, binding.focusAreaSpinner))
-            binding.bodyAreaSpinner.setSelection(getSpinnerPosition(it.bodyArea, binding.bodyAreaSpinner))
-            binding.descriptionInput.setText(it.description)
-
-
-            it.imageUri?.let { imageUri ->
-                selectedImageUri = Uri.parse(imageUri)
-                loadImageFromUri(selectedImageUri!!, selectedImageView)
+        if (yogaClassFromSql != null) {
+            populateUiWithYogaClass(yogaClassFromSql)
+        } else {
+            firebaseDatabase.child(classId.toString()).get().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val dataSnapshot = task.result
+                    if (dataSnapshot.exists()) {
+                        val yogaClassFromFirebase = dataSnapshot.getValue(YogaClass::class.java)
+                        yogaClassFromFirebase?.let {
+                            populateUiWithYogaClass(it)
+                        } ?: run {
+                            Toast.makeText(this, "Class not found in Firebase", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                    } else {
+                        Toast.makeText(this, "Class not found in Firebase", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                } else {
+                    Toast.makeText(this, "Failed to load class details from Firebase", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
             }
-
-        } ?: run {
-            Toast.makeText(this, "Class not found", Toast.LENGTH_SHORT).show()
-            finish()
         }
     }
 
-    private fun loadImageFromUri(uri: Uri, imageView: ImageView) {
+    private fun populateUiWithYogaClass(yogaClass: YogaClass) {
+        originalDayOfWeek = yogaClass.dayOfWeek
+
+        binding.dayOfWeekSpinner.setSelection(getSpinnerPosition(yogaClass.dayOfWeek, binding.dayOfWeekSpinner))
+        binding.timeOfCourseInput.text = yogaClass.timeOfCourse
+        binding.capacityInput.setText(yogaClass.capacity.toString())
+        binding.durationInput.setText(yogaClass.duration.toString())
+        binding.pricePerClassInput.setText(yogaClass.pricePerClass.toString())
+        binding.skillLevelSpinner.setSelection(getSpinnerPosition(yogaClass.skillLevel, binding.skillLevelSpinner))
+        binding.typeOfClassSpinner.setSelection(getSpinnerPosition(yogaClass.typeOfClass, binding.typeOfClassSpinner))
+        binding.focusAreaSpinner.setSelection(getSpinnerPosition(yogaClass.focusArea, binding.focusAreaSpinner))
+        binding.bodyAreaSpinner.setSelection(getSpinnerPosition(yogaClass.bodyArea, binding.bodyAreaSpinner))
+        binding.descriptionInput.setText(yogaClass.description)
+
+        yogaClass.imageUri?.let { base64String ->
+            loadImageFromBase64(base64String, selectedImageView)
+        }
+    }
+
+
+
+    private fun loadImageFromBase64(base64String: String, imageView: ImageView) {
         try {
-            val inputStream = contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
+            val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
             imageView.setImageBitmap(bitmap)
-            inputStream?.close()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
@@ -250,6 +286,8 @@ class EditClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSe
 
     private fun updateClass() {
         try {
+            val imageBase64 = selectedImageUri?.let { encodeImageToBase64(it) }
+
             val updatedClass = YogaClass(
                 id = classId.toInt(),
                 dayOfWeek = binding.dayOfWeekSpinner.selectedItem.toString(),
@@ -262,33 +300,30 @@ class EditClassActivity : AppCompatActivity(), NavigationView.OnNavigationItemSe
                 focusArea = binding.focusAreaSpinner.selectedItem.toString(),
                 bodyArea = binding.bodyAreaSpinner.selectedItem.toString(),
                 description = binding.descriptionInput.text.toString(),
-                imageUri = selectedImageUri?.toString()
+                imageUri = imageBase64
             )
 
-            val rowsAffected = yogaDao.updateClass(updatedClass)
-            if (rowsAffected > 0) {
-                firebaseDatabase.child(classId.toString()).setValue(updatedClass)
-                    .addOnSuccessListener {
-                        Toast.makeText(this, "Class updated successfully", Toast.LENGTH_SHORT).show()
-                        if (isDayOfWeekChanged) {
-                            Toast.makeText(this, "Warning: You have changed the day of the week!", Toast.LENGTH_SHORT).show()
-                        }
+            // Update in Firebase first
+            firebaseDatabase.child(classId.toString()).setValue(updatedClass)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Class updated successfully in Firebase", Toast.LENGTH_SHORT).show()
+                    if (isDayOfWeekChanged) {
+                        Toast.makeText(this, "Warning: You have changed the day of the week!", Toast.LENGTH_SHORT).show()
+                    }
 
-                        val intent = Intent(this, ClassDetailActivity::class.java)
-                        intent.putExtra("CLASS_ID", classId)
-                        startActivity(Intent(this, MainActivity::class.java))
-                        finish()
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(this, "Failed to update class in Firebase", Toast.LENGTH_SHORT).show()
-                    }
-            } else {
-                Toast.makeText(this, "Failed to update class in SQLite", Toast.LENGTH_SHORT).show()
-            }
+                    // Redirect to MainActivity
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Failed to update class in Firebase", Toast.LENGTH_SHORT).show()
+                }
         } catch (e: NumberFormatException) {
             Toast.makeText(this, "Please enter valid data for all fields", Toast.LENGTH_SHORT).show()
         }
     }
+
+
 
     private fun getSpinnerPosition(value: String, spinner: Spinner): Int {
         val adapter = spinner.adapter as ArrayAdapter<String>

@@ -2,7 +2,7 @@ package com.example.yogaadmin
 
 data class YogaClassWithTeacher(
     val yogaClass: YogaClass = YogaClass(),
-    val teacher: String = "",
-    val date: String = ""
+    var teacher: String = "",
+    var date: String = ""
 )
 

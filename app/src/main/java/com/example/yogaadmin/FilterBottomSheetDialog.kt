@@ -89,7 +89,7 @@ class FilterBottomSheetDialog : BottomSheetDialogFragment() {
             binding.checkSmallGroup.isChecked -> 9
             binding.checkMediumGroup.isChecked -> 25
             binding.checkLargeGroup.isChecked -> 50
-            else -> 0 // No filter if unchecked
+            else -> 0
         }
 
         val pricePerClass = when {

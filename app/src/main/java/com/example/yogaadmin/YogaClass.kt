@@ -12,6 +12,47 @@ data class YogaClass(
     val focusArea: String = "",
     val bodyArea: String = "",
     val description: String? = null,
-    val imageUri: String? = null
-)
+    var imageUri: String? = null
+){
+    fun matchesFilters(filters: Filters): Boolean {
+
+        if (filters.dayOfWeek.isNotEmpty() && !filters.dayOfWeek.contains(dayOfWeek)) {
+            return false
+        }
+
+        if (filters.skillLevel.isNotEmpty() && filters.skillLevel != skillLevel) {
+            return false
+        }
+
+        if (filters.focusArea.isNotEmpty() && !filters.focusArea.contains(focusArea)) {
+            return false
+        }
+
+        if (filters.bodyArea.isNotEmpty() && !filters.bodyArea.contains(bodyArea)) {
+            return false
+        }
+
+        if (filters.capacity > 0) {
+            when {
+                filters.capacity < 10 && capacity >= 10 -> return false
+                filters.capacity in 10..25 && (capacity < 10 || capacity > 25) -> return false
+                filters.capacity > 25 && capacity <= 25 -> return false
+            }
+        }
+
+        if (filters.pricePerClass >= 0) {
+            when {
+                filters.pricePerClass <= 20.0 && pricePerClass!! > 20.0 -> return false
+                filters.pricePerClass in 21.0..50.0 && (pricePerClass!! < 20 || pricePerClass > 50) -> return false
+                filters.pricePerClass > 50.0 && pricePerClass!! <= 50.0 -> return false
+            }
+        }
+
+        if (filters.duration > 0 && filters.duration != duration) {
+            return false
+        }
+
+        return true
+    }
+}
 

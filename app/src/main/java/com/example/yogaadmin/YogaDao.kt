@@ -368,6 +368,4 @@ class YogaDao(context: Context) {
         db.close()
         return classesWithTeachers
     }
-
-
 }

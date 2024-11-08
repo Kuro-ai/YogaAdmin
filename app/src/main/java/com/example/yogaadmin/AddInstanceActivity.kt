@@ -15,7 +15,11 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.FirebaseApp
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -79,39 +83,70 @@ class AddInstanceActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     private fun handleAddInstance() {
         val selectedClassPosition = classSpinner.selectedItemPosition
-        val yogaClass = yogaDao.getAllClasses()[selectedClassPosition]
-
-        val date = dateInput.text.toString()
-        val teacher = findViewById<EditText>(R.id.teacherInput).text.toString()
-
-        if (date.isBlank()) {
-            Toast.makeText(this, "Please select a valid date", Toast.LENGTH_SHORT).show()
+        if (selectedClassPosition == -1) {
+            Toast.makeText(this, "Please select a class", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (teacher.isBlank()) {
-            Toast.makeText(this, "Please enter a teacher's name", Toast.LENGTH_SHORT).show()
-            return
-        }
+        val database = FirebaseDatabase.getInstance("https://yogadb-92737-default-rtdb.asia-southeast1.firebasedatabase.app/")
+            .getReference("yogaclasses")
 
-        val yogaInstance = YogaInstance(
-            id = 0,
-            classId = yogaClass.id,
-            date = date,
-            teacher = teacher,
-            comments = findViewById<EditText>(R.id.commentsInput).text.toString()
-        )
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val yogaClasses = mutableListOf<YogaClass>()
 
-        val result = yogaDao.insertInstance(yogaInstance)
-        if (result != -1L) {
-            addInstanceToFirebase(yogaInstance, result)
-        } else {
-            Toast.makeText(this, "Failed to add instance", Toast.LENGTH_SHORT).show()
-        }
+                for (classSnapshot in snapshot.children) {
+                    val yogaClass = classSnapshot.getValue(YogaClass::class.java)
+                    if (yogaClass != null) {
+                        yogaClasses.add(yogaClass)
+                    }
+                }
+
+                if (selectedClassPosition >= yogaClasses.size) {
+                    Toast.makeText(this@AddInstanceActivity, "Invalid class selection", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                val yogaClass = yogaClasses[selectedClassPosition]
+
+                val date = dateInput.text.toString()
+                val teacher = findViewById<EditText>(R.id.teacherInput).text.toString()
+
+                if (date.isBlank()) {
+                    Toast.makeText(this@AddInstanceActivity, "Please select a valid date", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                if (teacher.isBlank()) {
+                    Toast.makeText(this@AddInstanceActivity, "Please enter a teacher's name", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
+                val yogaInstance = YogaInstance(
+                    id = 0,
+                    classId = yogaClass.id,
+                    date = date,
+                    teacher = teacher,
+                    comments = findViewById<EditText>(R.id.commentsInput).text.toString()
+                )
+
+                val result = yogaDao.insertInstance(yogaInstance)
+                if (result != -1L) {
+                    addInstanceToFirebase(yogaInstance, result)
+                } else {
+                    Toast.makeText(this@AddInstanceActivity, "Failed to add instance", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@AddInstanceActivity, "Failed to load class data", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun addInstanceToFirebase(yogaInstance: YogaInstance, sqliteId: Long) {
-        val database = FirebaseDatabase.getInstance("https://yogadb-92737-default-rtdb.asia-southeast1.firebasedatabase.app/").getReference("YogaInstances")
+        val database = FirebaseDatabase.getInstance("https://yogadb-92737-default-rtdb.asia-southeast1.firebasedatabase.app/")
+            .getReference("YogaInstances")
 
         val instanceId = sqliteId.toString()
 
@@ -139,15 +174,35 @@ class AddInstanceActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     }
 
 
-    private fun setupClassSpinner() {
-        val classList = yogaDao.getAllClasses()
-        val classDescriptions = classList.map { yogaClass ->
-            "${yogaClass.dayOfWeek} at ${yogaClass.timeOfCourse}, ${yogaClass.typeOfClass} (${yogaClass.skillLevel})"
-        }
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, classDescriptions)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        classSpinner.adapter = adapter
+    private fun setupClassSpinner() {
+        val database = FirebaseDatabase.getInstance("https://yogadb-92737-default-rtdb.asia-southeast1.firebasedatabase.app/")
+            .getReference("yogaclasses")
+
+        val classDescriptions = mutableListOf<String>()
+
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                classDescriptions.clear()
+
+
+                for (classSnapshot in snapshot.children) {
+                    val yogaClass = classSnapshot.getValue(YogaClass::class.java)
+                    if (yogaClass != null) {
+                        val description = "${yogaClass.dayOfWeek} at ${yogaClass.timeOfCourse}, ${yogaClass.typeOfClass} (${yogaClass.skillLevel})"
+                        classDescriptions.add(description)
+                    }
+                }
+
+                val adapter = ArrayAdapter(this@AddInstanceActivity, android.R.layout.simple_spinner_item, classDescriptions)
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                classSpinner.adapter = adapter
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@AddInstanceActivity, "Failed to load data", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
@@ -193,11 +248,14 @@ class AddInstanceActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     @SuppressLint("SetTextI18n")
     private fun checkDateWithDayOfWeek(selectedDate: Calendar) {
         val selectedClassPosition = classSpinner.selectedItemPosition
-        if (selectedClassPosition == -1) {
+
+        val yogaClasses = yogaDao.getAllClasses()
+        if (selectedClassPosition == -1 || yogaClasses.isEmpty() || selectedClassPosition >= yogaClasses.size) {
+            Toast.makeText(this, "No class selected or classes list is empty", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val yogaClass = yogaDao.getAllClasses()[selectedClassPosition]
+        val yogaClass = yogaClasses[selectedClassPosition]
         val classDayOfWeek = yogaClass.dayOfWeek
 
         val dayOfWeekFormat = SimpleDateFormat("EEEE", Locale.getDefault())
@@ -210,7 +268,6 @@ class AddInstanceActivity : AppCompatActivity(), NavigationView.OnNavigationItem
         }
 
         val existingInstances = yogaDao.getInstancesByClassId(yogaClass.id.toLong())
-
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val selectedDateString = dateFormat.format(selectedDate.time)
 
@@ -219,4 +276,5 @@ class AddInstanceActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             Toast.makeText(this, "The selected date is already booked for this class", Toast.LENGTH_LONG).show()
         }
     }
+
 }

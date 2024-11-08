@@ -95,10 +95,8 @@ class EditInstanceActivity : AppCompatActivity(), NavigationView.OnNavigationIte
             comments = binding.commentsInput.text.toString()
         )
 
-        // Update Firebase first
         firebaseDatabase.child(instanceId.toString()).setValue(updatedInstance)
             .addOnSuccessListener {
-                // If Firebase update is successful, update SQLite
                 val success = yogaDao.updateInstance(updatedInstance)
                 if (success > 0) {
                     Toast.makeText(this, "Instance updated successfully", Toast.LENGTH_SHORT).show()

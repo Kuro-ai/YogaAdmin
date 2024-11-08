@@ -30,6 +30,8 @@ import androidx.appcompat.widget.Toolbar
 import androidx.cardview.widget.CardView
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.database.FirebaseDatabase
+import android.util.Base64
+import android.graphics.Bitmap
 
 class ClassDetailActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
@@ -43,30 +45,32 @@ class ClassDetailActivity : AppCompatActivity(), NavigationView.OnNavigationItem
     private lateinit var classFocusArea: TextView
     private lateinit var classBodyArea: TextView
     private lateinit var classDescription: TextView
-    private lateinit var classInstancesTextView: TextView
     private lateinit var classImage: ImageView
     private lateinit var deleteClassButton: Button
     private lateinit var editClassButton: Button
     private lateinit var drawerLayout: DrawerLayout
+
     private var classId: Long = -1L
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_class_detail)
 
-            classDayOfWeek = findViewById(R.id.class_day_of_week)
-            classTimeOfCourse = findViewById(R.id.class_time_of_course)
-            classCapacity = findViewById(R.id.class_capacity)
-            classDuration = findViewById(R.id.class_duration)
-            classPrice = findViewById(R.id.class_price)
-            classSkillLevel = findViewById(R.id.class_skill_level)
-            classTypeOfClass = findViewById(R.id.class_type_of_class)
-            classFocusArea = findViewById(R.id.class_focus_area)
-            classBodyArea = findViewById(R.id.class_body_area)
-            classDescription = findViewById(R.id.class_description)
-            classImage = findViewById(R.id.class_image)
-            deleteClassButton = findViewById(R.id.delete_class_button)
-            editClassButton = findViewById(R.id.edit_class_button)
+
+        classDayOfWeek = findViewById(R.id.class_day_of_week)
+        classTimeOfCourse = findViewById(R.id.class_time_of_course)
+        classCapacity = findViewById(R.id.class_capacity)
+        classDuration = findViewById(R.id.class_duration)
+        classPrice = findViewById(R.id.class_price)
+        classSkillLevel = findViewById(R.id.class_skill_level)
+        classTypeOfClass = findViewById(R.id.class_type_of_class)
+        classFocusArea = findViewById(R.id.class_focus_area)
+        classBodyArea = findViewById(R.id.class_body_area)
+        classDescription = findViewById(R.id.class_description)
+        classImage = findViewById(R.id.class_image)
+        deleteClassButton = findViewById(R.id.delete_class_button)
+        editClassButton = findViewById(R.id.edit_class_button)
 
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -134,40 +138,65 @@ class ClassDetailActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
     @SuppressLint("SetTextI18n")
     private fun refreshClassDetails() {
-        val yogaDao = YogaDao(this)
-        val yogaClass = yogaDao.getClassById(classId)
-        val yogaInstances = yogaDao.getInstancesByClassId(classId)
+        fetchClassFromFirebase()
+        fetchInstancesFromFirebase(classId.toString())
+    }
 
-        yogaClass?.let {
-            displayClassDetails(it)
-        } ?: run {
-            classInstancesTextView.text = "Class not found."
-        }
+    private fun fetchClassFromFirebase() {
+        val database = FirebaseDatabase.getInstance("https://yogadb-92737-default-rtdb.asia-southeast1.firebasedatabase.app/")
+        val classRef = database.getReference("yogaclasses").child(classId.toString())
 
-        displayClassInstances(yogaInstances)
-        yogaClass?.imageUri?.let { imageUriString ->
-            val imageUri = Uri.parse(imageUriString)
-            loadImageFromUri(imageUri, classImage)
-        } ?: run {
-            classImage.setImageResource(R.drawable.image_placeholder)
+        classRef.get().addOnSuccessListener { snapshot ->
+            val yogaClass = snapshot.getValue(YogaClass::class.java)
+            yogaClass?.let {
+                displayClassDetails(it)
+            }
+        }.addOnFailureListener {
+            Toast.makeText(this, "Failed to retrieve class details from Firebase.", Toast.LENGTH_SHORT).show()
         }
     }
 
-//    private fun syncWithFirebase(yogaClass: YogaClass) {
-//        val database = FirebaseDatabase.getInstance().getReference("yogaClasses").child(classId.toString())
-//        database.get().addOnSuccessListener {
-//            if (it.exists()) {
-//                val firebaseClass = it.getValue(YogaClass::class.java)
-//                firebaseClass?.let { displayClassDetails(it) }
-//            }
-//        }.addOnFailureListener {
-//            Toast.makeText(this, "Failed to sync with Firebase", Toast.LENGTH_SHORT).show()
-//        }
-//    }
+    private fun fetchInstancesFromFirebase(classId: String) {
+        val database = FirebaseDatabase.getInstance("https://yogadb-92737-default-rtdb.asia-southeast1.firebasedatabase.app/")
+        val instancesRef = database.getReference("YogaInstances")
+
+        instancesRef.get()
+            .addOnSuccessListener { snapshot ->
+                Log.d("fetchInstances", "Snapshot exists: ${snapshot.exists()}")
+                Log.d("fetchInstances", "Snapshot children count: ${snapshot.childrenCount}")
+                val instances = mutableListOf<YogaInstance>()
+                snapshot.children.forEach { child ->
+                    val instance = child.getValue(YogaInstance::class.java)
+
+                    if (instance?.classId.toString() == classId) {
+                        if (instance != null) {
+                            instances.add(instance)
+                        }
+                    }
+                }
+                displayClassInstances(instances)
+            }
+            .addOnFailureListener {
+                Log.e("fetchInstances", "Error fetching instances", it)
+                Toast.makeText(this, "Failed to retrieve class instances from Firebase.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+
+    private fun decodeBase64ToBitmap(base64String: String): Bitmap? {
+        return try {
+            val decodedString = Base64.decode(base64String, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            null
+        }
+    }
+
 
     private fun displayClassDetails(yogaClass: YogaClass) {
         classDayOfWeek.text = yogaClass.dayOfWeek
-        classTimeOfCourse.text = SpannableString("Date \n ${yogaClass.timeOfCourse}").apply {
+        classTimeOfCourse.text = SpannableString("Time \n ${yogaClass.timeOfCourse}").apply {
             setSpan(StyleSpan(Typeface.BOLD), 0, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
 
@@ -203,25 +232,21 @@ class ClassDetailActivity : AppCompatActivity(), NavigationView.OnNavigationItem
             setSpan(StyleSpan(Typeface.BOLD), 0, 11, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
 
-        val imageUriString = yogaClass.imageUri
-        if (imageUriString != null) {
-            val imageUri = Uri.parse(imageUriString)
-            loadImageFromUri(imageUri, classImage)
+        val imageBase64 = yogaClass.imageUri
+        if (imageBase64 != null) {
+            loadImageFromBase64(imageBase64, classImage)
         } else {
             classImage.setImageResource(R.drawable.image_placeholder)
         }
+
     }
 
-    private fun loadImageFromUri(uri: Uri, imageView: ImageView) {
-        try {
-            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-            val inputStream = contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
+    private fun loadImageFromBase64(base64String: String, imageView: ImageView) {
+        val bitmap = decodeBase64ToBitmap(base64String)
+        if (bitmap != null) {
             imageView.setImageBitmap(bitmap)
-            inputStream?.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } else {
+            imageView.setImageResource(R.drawable.image_placeholder)
             Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
         }
     }
@@ -233,7 +258,7 @@ class ClassDetailActivity : AppCompatActivity(), NavigationView.OnNavigationItem
 
         if (instances.isEmpty()) {
             val noInstancesTextView = TextView(this).apply {
-                text = "No instances available."
+                text = "No courses available."
                 textSize = 16f
                 setTypeface(typeface, Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(
@@ -438,8 +463,8 @@ class ClassDetailActivity : AppCompatActivity(), NavigationView.OnNavigationItem
                     }
                     Toast.makeText(this@ClassDetailActivity, "Instances deleted from Firebase.", Toast.LENGTH_SHORT).show()
                 } else {
-                    Log.d("DeleteClass", "No instances found in Firebase.")
-                    Toast.makeText(this@ClassDetailActivity, "No instances to delete.", Toast.LENGTH_SHORT).show()
+                    Log.d("DeleteClass", "No courses found in Firebase.")
+                    Toast.makeText(this@ClassDetailActivity, "No courses to delete.", Toast.LENGTH_SHORT).show()
                 }
 
                 deleteFromLocalDatabase(classId)

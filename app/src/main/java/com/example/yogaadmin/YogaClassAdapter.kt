@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,9 +15,12 @@ import android.widget.BaseAdapter
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContextCompat
-import androidx.core.app.ActivityCompat
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+
 
 class YogaClassAdapter(
     private val context: Context,
@@ -25,9 +29,6 @@ class YogaClassAdapter(
 
     private var filteredYogaClasses: List<YogaClassWithTeacher> = yogaClassesWithTeacher
 
-    companion object {
-        private const val REQUEST_CODE_STORAGE_PERMISSION = 1001
-    }
 
     init {
         fetchClassesFromFirebase()
@@ -110,15 +111,13 @@ class YogaClassAdapter(
             viewHolder.date.visibility = View.GONE
         }
 
-        val imageUriString = yogaClassWithTeacher.yogaClass.imageUri
-        if (!imageUriString.isNullOrEmpty()) {
-            val imageUri = Uri.parse(imageUriString)
-            loadImageFromUri(imageUri, viewHolder.classImage)
-            viewHolder.classImage.visibility = View.VISIBLE
+        val imageBase64 = yogaClassWithTeacher.yogaClass.imageUri
+        if (!imageBase64.isNullOrEmpty()) {
+            loadImageFromBase64(imageBase64, viewHolder.classImage)
         } else {
             viewHolder.classImage.setImageResource(R.drawable.image_placeholder)
-            viewHolder.classImage.visibility = View.VISIBLE
         }
+
 
         view.setOnClickListener {
             val intent = Intent(context, ClassDetailActivity::class.java).apply {
@@ -130,86 +129,87 @@ class YogaClassAdapter(
         return view
     }
 
-    private fun loadImageFromUri(uri: Uri, imageView: ImageView) {
-        if (checkStoragePermission()) {
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                imageView.setImageBitmap(bitmap)
-                inputStream?.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            requestStoragePermission()
-        }
-    }
-
-    private fun checkStoragePermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            true
-        } else {
-            ContextCompat.checkSelfPermission(
-                context,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    private fun requestStoragePermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(
-                    (context as MainActivity),
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE
-                )
-            ) {
-                Toast.makeText(context, "Storage access is needed to load images", Toast.LENGTH_SHORT).show()
-            }
-            ActivityCompat.requestPermissions(
-                context,
-                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
-                REQUEST_CODE_STORAGE_PERMISSION
-            )
+    private fun loadImageFromBase64(base64String: String, imageView: ImageView) {
+        try {
+            val decodedBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+            imageView.setImageBitmap(bitmap)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun fetchClassesFromFirebase() {
-        val firebaseDb = FirebaseFirestore.getInstance()
-        firebaseDb.collection("YogaClasses")
-            .get()
-            .addOnSuccessListener { documents ->
-                val firebaseClasses = mutableListOf<YogaClassWithTeacher>()
-                for (document in documents) {
-                    val yogaClass = YogaClass(
-                        id = document.getLong("id")?.toInt() ?: 0,
-                        dayOfWeek = document.getString("day_of_week") ?: "",
-                        timeOfCourse = document.getString("time_of_course") ?: "",
-                        capacity = document.getLong("capacity")?.toInt() ?: 0,
-                        duration = document.getLong("duration")?.toInt() ?: 0,
-                        pricePerClass = document.getDouble("price_per_class"),
-                        typeOfClass = document.getString("type_of_class") ?: "",
-                        skillLevel = document.getString("skill_level") ?: "",
-                        focusArea = document.getString("focus_area") ?: "",
-                        bodyArea = document.getString("body_area") ?: "",
-                        description = document.getString("description") ?: "",
-                        imageUri = document.getString("imageUri")
-                    )
-                    val teacher = document.getString("teacher") ?: "N/A"
-                    val date = document.getString("date") ?: "No Schedule"
+        val yogaClassesRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("yogaclasses")
+        val yogaInstancesRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("YogaInstances")
 
-                    firebaseClasses.add(YogaClassWithTeacher(yogaClass, teacher, date))
+        yogaClassesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val firebaseClasses = mutableListOf<YogaClassWithTeacher>()
+
+                for (document in snapshot.children) {
+                    val yogaClass = YogaClass(
+                        id = document.child("id").getValue(Int::class.java) ?: 0,
+                        dayOfWeek = document.child("day_of_week").getValue(String::class.java) ?: "",
+                        timeOfCourse = document.child("time_of_course").getValue(String::class.java) ?: "",
+                        capacity = document.child("capacity").getValue(Int::class.java) ?: 0,
+                        duration = document.child("duration").getValue(Int::class.java) ?: 0,
+                        pricePerClass = document.child("price_per_class").getValue(Double::class.java),
+                        typeOfClass = document.child("type_of_class").getValue(String::class.java) ?: "",
+                        skillLevel = document.child("skill_level").getValue(String::class.java) ?: "",
+                        focusArea = document.child("focus_area").getValue(String::class.java) ?: "",
+                        bodyArea = document.child("body_area").getValue(String::class.java) ?: "",
+                        description = document.child("description").getValue(String::class.java) ?: "",
+                        imageUri = document.child("imageUri").getValue(String::class.java)
+                    )
+
+                    val yogaClassWithTeacher = YogaClassWithTeacher(yogaClass, teacher = "N/A", date = "No Schedule")
+                    firebaseClasses.add(yogaClassWithTeacher)
                 }
-                updateDataList(firebaseClasses)
+
+                yogaInstancesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(instanceSnapshot: DataSnapshot) {
+                        for (yogaClassWithTeacher in firebaseClasses) {
+                            val classId = yogaClassWithTeacher.yogaClass.id.toString()
+
+                            val matchingInstance = instanceSnapshot.children.find {
+                                it.child("classId").getValue(String::class.java) == classId
+                            }
+
+                            if (matchingInstance != null) {
+                                yogaClassWithTeacher.teacher = matchingInstance.child("teacher").getValue(String::class.java) ?: "N/A"
+                                yogaClassWithTeacher.date = matchingInstance.child("date").getValue(String::class.java) ?: "No Schedule"
+                            }
+                        }
+
+                        Log.d("YogaClassAdapter", "Fetched ${firebaseClasses.size} classes with teacher and date from YogaInstances.")
+                        updateDataList(firebaseClasses)
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Toast.makeText(context, "Failed to load YogaInstances data", Toast.LENGTH_SHORT).show()
+                        Log.e("YogaClassAdapter", "Error fetching YogaInstances data", error.toException())
+                    }
+                })
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Failed to load Firebase data", Toast.LENGTH_SHORT).show()
-                e.printStackTrace()
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(context, "Failed to load YogaClasses data", Toast.LENGTH_SHORT).show()
+                Log.e("YogaClassAdapter", "Error fetching YogaClasses data", error.toException())
             }
+        })
     }
+
 
     private fun updateDataList(firebaseClasses: List<YogaClassWithTeacher>) {
         yogaClassesWithTeacher = yogaClassesWithTeacher + firebaseClasses
+        filteredYogaClasses = yogaClassesWithTeacher
+        notifyDataSetChanged()
+    }
+
+    fun updateData(newYogaClasses: List<YogaClassWithTeacher>) {
+        yogaClassesWithTeacher = newYogaClasses
         filteredYogaClasses = yogaClassesWithTeacher
         notifyDataSetChanged()
     }
